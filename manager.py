@@ -62,7 +62,7 @@ Nunca respondas con información que no esté incluida. Si no tienes la respuest
 
 ❓ ¿Dónde puedo ver los eventos de PAIS A.C.?
 📅 Consulta eventos:
-🔗 https://wechamber.mx/micrositio-eventos/6500e21c80d167001bf44b63
+🔗 https://wechamber.mx/micrositio-eventos/63f119deddcf3d001b703692
 
 ❓MISIÓN
 Brindar servicio profesional de consultoría y formación para el desarrollo
