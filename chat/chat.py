@@ -1,19 +1,18 @@
 import re
 import json
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 from manager import ai_manager
 from db.crud.crud import get_user, create_user, update_user
 from db.models.models import User
 from chat.extract_history import extract_history
 
-chat_router= APIRouter()
+chat_router = APIRouter()
 
 class Message(BaseModel):
     from_: str = Field(..., alias='from')
     query: str
-    member: bool = False
-    organization_id: str
+    organization_id: str 
 
 @chat_router.post("/")
 async def chat_api(request: Request):
@@ -44,15 +43,14 @@ async def chat_api(request: Request):
         if extract['error'] is not None:
             chat_history = message.query
 
-        response_message = ai_manager(chat_history, member=message.member)
+        response_message = ai_manager(chat_history)
         response_message = response_message.replace('**', '*')
+
         user_chat_history += "ASSISTANT: " + response_message + ", "
 
         await update_user(user["_id"], user_chat_history)
 
-        if message.member:
-            response_message = response_message.replace('\n', '').replace('\\"', '"')
-
+        # ✅ Ya no es necesario limpiar si es miembro
         json_match = re.search(r'\{.*\}', response_message)
         print("JSON Match: ", json_match)
 

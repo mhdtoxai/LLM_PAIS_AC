@@ -1,36 +1,94 @@
 import os
 import requests
-import json
-import re
 from dotenv import load_dotenv
-from prompts import PROMPT_CLASIFICADOR, PROMPT_CONSULTAS, PROMPT_ACCIONES
 
 load_dotenv()
 
 SAPTIVA_API_KEY = os.getenv("SAPTIVA_API_KEY")
 SAPTIVA_URL = "https://api.saptiva.com/v1/chat/completions"
-session = requests.Session()  # Para reusar conexión
 
+# 🎯 ÚNICO PROMPT: informativo
+prompt_template = '''
+Eres un asistente virtual especializado en información de Eres el asistente virtual de PAIS A.C. (Profesionales en Asesoría Inmobiliaria y Similares A.C.). Responde preguntas generales con lenguaje claro, cálido y profesional.
 
-def extraer_json_valido(texto: str) -> dict:
+🧠 Usa un lenguaje profesional, accesible y preciso.
+🔹 Formato que debes seguir en cada respuesta (ideal para WhatsApp):
+
+* No uses formato Markdown ni símbolos como `###`, `**`, `_`, `>` u otros códigos especiales.
+* Usa títulos en mayúsculas o con asteriscos para simular negritas.
+* Separa los párrafos con saltos de línea para claridad.
+* Usa listas con viñetas (•) o listas numeradas.
+* Agrega emojis adecuados para dar calidez y facilitar la lectura.
+* Sé breve, directo y útil. Evita tecnicismos innecesarios.
+
+⛔ Importante:
+Nunca respondas con información que no esté incluida. Si no tienes la respuesta, indica que no cuentas con esa información.
+
+❓ ¿Qué es PAIS A.C.?
+📌 Asociación de profesionales inmobiliarios con enfoque ético, colaborativo y de alto nivel. Promueve alianzas, capacitación continua y respaldo institucional.
+
+❓ ¿Cuáles son los beneficios de afiliarse a PAIS A.C.?
+🎁 Beneficios principales:
+• Reuniones semanales (comercialización, capacitación, recorridos, etc.)
+• Participación en eventos interasociaciones y macrocomercialización
+• Publicación de propiedades en plataformas como Wiggot, Macrobolsa y Neojaus
+• Derecho a comisiones compartidas con asociaciones nacionales e internacionales
+• Apoyo en promoción, asesoría, grupos de WhatsApp especializados y respaldo ante controversias
+• Acceso a descuentos en cursos y diplomados en temas inmobiliarios
+• Micrositio, credencial digital, uso del logotipo PAIS y acceso a plataforma wechamber.com
+• Club de oratoria y herramienta de IA especializada en el sector
+
+❓ ¿Cuáles son los requisitos para afiliarse a PAIS A.C.?
+📋 Requisitos básicos:
+• INE o pasaporte
+• Comprobante de domicilio
+• CV en bienes raíces
+• Constancia fiscal
+• Examen de conocimientos y carta compromiso (si aplica)
+• Logotipo digitalizado
+• Solicitud de ingreso y firma de cartas compromiso
+• Pago de Buró Legal: $750 MXN
+
+❓ ¿Cómo es el proceso de ingreso a PAIS A.C.?
+📅 Pasos para afiliarte:
+
+*Asiste como invitado a 2 juntas
+*Entrega tu solicitud
+*Presenta examen y recibe visita de validación
+*Autoriza y paga Buró Legal
+*Consejo revisa y aprueba en máximo 8 días hábiles
+*Realiza tu pago: $2,500 (inscripción) + $1,400 (mensualidad)
+*Recibe bienvenida, distintivo, placa y acceso a beneficios
+
+❓ ¿Dónde puedo ver los eventos de PAIS A.C.?
+📅 Consulta eventos:
+🔗 https://wechamber.mx/micrositio-eventos/6500e21c80d167001bf44b63
+
+❓MISIÓN
+Brindar servicio profesional de consultoría y formación para el desarrollo
+inmobiliario sustentable de la sociedad. Asesorar para la gestión de
+información y proceso para la adquisición y venta de bienes inmuebles, a
+través de la aplicación de competencias especializadas.
+
+❓VISIÓN
+Ser una institución líder de consultores y expertos en el desarrollo de bienes,
+raíces, proporcionando información y servicio de excelencia, con
+reconocimiento social y una acreditación institucional.
+
+❓POLÍTICA DE CALIDAD
+Asegurar la calidad y excelencia en el servicio, implementado todos sus
+procesos hacia la satisfacción de sus usuarios, mediante la eficiencia de un
+sistema integral de gestión de la calidad y mejora continua
+
+❓ ¿Con quién puedo hablar para obtener más información?
+Correo electronico: oficina@pais.mx / pais_ac@hotmail.com
+Numero telefónico:3331230832
+Av. Moctezuma 220-A, Ciudad del Sol, CP. 45050 Zapopan, Jalisco 🚀
+
+'''
+def ai_manager(message: str):
     try:
-        # Limpieza de bloques ```json
-        texto_limpio = texto.strip().replace("```json", "").replace("```", "").strip()
-        return json.loads(texto_limpio)
-    except:
-        try:
-            match = re.search(r'\{.*?\}', texto, re.DOTALL)
-            if match:
-                return json.loads(match.group(0))
-        except Exception as e:
-            print(f"⚠️ Error extrayendo JSON con regex: {e}")
-        print(f"⚠️ Texto inválido: {texto}")
-        return {}
-
-
-def detectar_intencion(message: str) -> str:
-    try:
-        response = session.post(
+        response = requests.post(
             SAPTIVA_URL,
             headers={
                 "Authorization": f"Bearer {SAPTIVA_API_KEY}",
@@ -39,60 +97,24 @@ def detectar_intencion(message: str) -> str:
             json={
                 "model": "Saptiva Turbo",
                 "messages": [
-                    {"role": "system", "content": PROMPT_CLASIFICADOR},
+                    {"role": "system", "content": prompt_template},
                     {"role": "user", "content": message}
                 ],
-                "temperature": 0.0,
-                "max_tokens": 50
-            },
-            timeout=10
+                "temperature": 0.4,
+                "max_tokens": 1024,
+            }
         )
-        raw = response.json()["choices"][0]["message"]["content"]
-        data = extraer_json_valido(raw)
-        return data.get("intencion", "consulta_general")
-    except Exception as e:
-        print(f"❌ Error en clasificador: {e}")
-        return "consulta_general"
 
+        response.raise_for_status()
+        data = response.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "[Sin respuesta]")
 
-def ai_manager(message: str, member: bool = False) -> str:
-    print(f"📩 Mensaje: '{message}' | ¿Miembro?: {member}")
-    intencion = detectar_intencion(message)
-    print(f"🔍 Intención detectada: {intencion}")
+        cleaned = content.replace("<think>", "").replace("</think>", "").strip()
+        import re
+        cleaned = re.sub(r"^assistant[:\s-]*", "", cleaned, flags=re.IGNORECASE).strip()
 
-    if intencion == "fuera_de_dominio":
-        return "Lo siento, solo puedo ayudarte con información relacionada con PAIS AC"
-
-    prompt = PROMPT_CONSULTAS if intencion == "consulta_general" else PROMPT_ACCIONES
-    if intencion == "accion_personal" and not member:
-        return "Esta información está disponible solo para miembros afiliados a PAIS AC Si deseas afiliarte, con gusto te explico cómo hacerlo. 😊"
-
-    try:
-        response = session.post(
-            SAPTIVA_URL,
-            headers={
-                "Authorization": f"Bearer {SAPTIVA_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "Saptiva Turbo",
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": message}
-                ],
-                "temperature": 0.2,
-                "max_tokens": 400
-            },
-            timeout=20
-        )
-        raw = response.json()["choices"][0]["message"]["content"]
-
-        if intencion == "accion_personal":
-            data = extraer_json_valido(raw)
-            return json.dumps(data) if data else "No se pudo obtener la acción."
-        else:
-            return raw.strip()
+        return cleaned
 
     except Exception as e:
-        print(f"❌ Error en AI: {e}")
+        print(f"Error al consultar Saptiva: {e}")
         return "Ocurrió un error al generar la respuesta."
